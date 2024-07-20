@@ -12,7 +12,7 @@ const BottomNavBar = ({ openSearchModal }) => {
         <FontAwesome name="home" size={24} color="black" />
         <Text style={styles.navText}>Explorar</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.navButton} onPress={openSearchModal}>
+      <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('Buscar')}>
         <FontAwesome name="search" size={24} color="black" />
         <Text style={styles.navText}>Buscar</Text>
       </TouchableOpacity>
