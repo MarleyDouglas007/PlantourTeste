@@ -1,24 +1,22 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, TextInput, Alert } from 'react-native';
-import { useNavigation } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { sendPasswordResetEmail } from "firebase/auth";  // Importe a função correta do Firebase
+import { auth } from '../firebaseConfig';  // Certifique-se de que o auth está sendo importado corretamente
 
 const EsqueceuSenha = () => {
-  const navigation = useNavigation();
   const [email, setEmail] = useState('');
+  const router = useRouter();
 
-  const sendPasswordResetEmail = async () => {
-    // Simulação de envio assíncrono (substitua com a lógica real de envio de e-mail)
+  const sendPasswordResetEmailFirebase = async () => {
     try {
-      // Simular um tempo de espera de 2 segundos
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Envia o email de redefinição de senha usando Firebase
+      await sendPasswordResetEmail(auth, email);
 
-      // Aqui você chamaria sua API ou serviço para enviar o e-mail de recuperação
-      Alert.alert('Sucesso', `Um e-mail de recuperação foi enviado para ${email}`);
-
-      // Navegar para a tela de confirmação após o envio do e-mail
-      navigation.navigate('ConfirmacaoOk');
+      // Redireciona para a tela de confirmação após o envio do e-mail
+      router.push('/ConfirmacaoOk');
     } catch (error) {
-      console.error('Erro ao enviar e-mail de recuperação:', error);
+      // Em caso de erro, exibe uma mensagem
       Alert.alert('Erro', 'Ocorreu um erro ao enviar o e-mail de recuperação. Por favor, tente novamente mais tarde.');
     }
   };
@@ -30,7 +28,7 @@ const EsqueceuSenha = () => {
     }
 
     // Chamar a função para enviar o e-mail de recuperação
-    sendPasswordResetEmail();
+    sendPasswordResetEmailFirebase();
   };
 
   return (
@@ -58,7 +56,7 @@ const EsqueceuSenha = () => {
 
         <Text style={styles.buttonTextOU}>OU</Text>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Cadastro')}>
+        <TouchableOpacity onPress={() => router.push('/Cadastro')}>
           <Text style={styles.input2}>Criar Nova Conta</Text>
         </TouchableOpacity>
       </View>

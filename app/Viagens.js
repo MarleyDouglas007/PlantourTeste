@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import BottomNavBar from './BottomNavBar'; // Certifique-se de ajustar o caminho conforme necessário
-import { useNavigation } from 'expo-router';
+import { useRouter } from 'expo-router'; //adc : antes nao estava funcionando
 
 const Viagens = ({ openSearchModal }) => {
-  const navigation = useNavigation();
-
+//  const navigation = useNavigation();
+  const router = useRouter(); //adc essa parte aqui
   return (
     <View style={styles.container}>
       <View style={styles.inputContainer}>
@@ -18,7 +18,7 @@ const Viagens = ({ openSearchModal }) => {
         <Botao 
           texto="Criar roteiro" 
           icone={{ uri: 'https://img.icons8.com/ios/452/clipboard.png' }} 
-          onPress={() => navigation.navigate('CriarRoteiro')} 
+          onPress={() => router.push('/CriarRoteiro')} 
         />
         <Botao 
           texto="Meus locais" 
