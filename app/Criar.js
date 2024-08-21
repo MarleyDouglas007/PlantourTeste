@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, ScrollView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, ScrollView, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Picker } from '@react-native-picker/picker';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc } from 'firebase/firestore';
+import { db, storage } from './../firebaseConfig'; // ajuste o caminho conforme necessário
+import uuid from 'react-native-uuid';  // Alterado para importar react-native-uuid
 
 const Criar = () => {
+  const navigation = useNavigation();
   const [titulo, setTitulo] = useState('');
   const [valor, setValor] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [imagem, setImagem] = useState(null);
   const [endereco, setEndereco] = useState('');
   const [tipo, setTipo] = useState('');
-  // Novos campos para o tipo "Passeio"
-  const [data, setData] = useState('');
-  const [horario, setHorario] = useState('');
-  const [limitePessoas, setLimitePessoas] = useState('');
+  const [imagem, setImagem] = useState(null);
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -22,30 +24,79 @@ const Criar = () => {
       aspect: [4, 3],
       quality: 1,
     });
-
-    if (!result.canceled) {
-      setImagem(result.uri);
+  
+    console.log('ImagePicker result:', result);
+  
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const uri = result.assets[0].uri;
+      console.log('Image URI:', uri);
+  
+      try {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const storageRef = ref(storage, `images/${uuid.v4()}`);
+        
+        // Upload the image
+        await uploadBytes(storageRef, blob);
+  
+        // Get the download URL
+        const downloadURL = await getDownloadURL(storageRef);
+        console.log('Download URL:', downloadURL);
+  
+        // Set the image URL state
+        setImagem(downloadURL);
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        Alert.alert('Erro', 'Não foi possível fazer o upload da imagem.');
+      }
+    } else {
+      console.error('No image selected or URI is undefined');
+      Alert.alert('Erro', 'Nenhuma imagem selecionada ou URI indefinida.');
     }
   };
+  
+  
 
-  const handlePost = () => {
-    // Handle the post logic here
-    console.log({ nome, valor, descricao, imagem, endereco, tipo, titulo, data, horario, limitePessoas });
-    // Reset the form fields
-    setNome('');
-    setValor('');
-    setDescricao('');
-    setImagem(null);
-    setEndereco('');
-    setTipo('');
-    setTitulo('');
-    setData('');
-    setHorario('');
-    setLimitePessoas('');
+  const handlePost = async () => {
+    if (!titulo || !valor || !descricao || !endereco || !tipo) {
+      Alert.alert('Erro', 'Todos os campos são obrigatórios!');
+      return;
+    }
+
+    const publicationData = {
+      titulo,
+      valor: parseFloat(valor),
+      descricao,
+      endereco,
+      tipo,
+      empresaId: 'id_da_empresa', // Substitua com o ID real da empresa
+      imagemUrl: imagem,
+    };
+
+    try {
+      await addDoc(collection(db, 'publicacoes'), publicationData);
+      Alert.alert('Sucesso', 'Publicação criada com sucesso!');
+      
+      // Resetar os campos
+      setTitulo('');
+      setValor('');
+      setDescricao('');
+      setEndereco('');
+      setTipo('');
+      setImagem(null);
+    } catch (error) {
+      console.error('Erro ao criar a publicação:', error);
+      Alert.alert('Erro', 'Não foi possível criar a publicação.');
+    }
   };
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
+       <View style={styles.inputContainer}>
+        <TouchableOpacity onPress={() => navigation.navigate('Explorar')} style={styles.setaContainer}>
+          <Image source={require('../assets/seta.png')} style={styles.seta} />
+        </TouchableOpacity>
+      </View>
       <View style={styles.container}>
         <Text style={styles.title}>Postar Novo Card</Text>
 
@@ -58,12 +109,12 @@ const Criar = () => {
         </TouchableOpacity>
 
         <TextInput
-              style={styles.input}
-              placeholder="Título"
-              value={titulo}
-              onChangeText={setTitulo}
-              placeholderTextColor="#888"
-            />
+          style={styles.input}
+          placeholder="Título"
+          value={titulo}
+          onChangeText={setTitulo}
+          placeholderTextColor="#888"
+        />
 
         <TextInput
           style={styles.input}
@@ -107,38 +158,6 @@ const Criar = () => {
           </Picker>
         </View>
 
-        {/* Campos adicionais para o tipo "Passeio" */}
-        {tipo === 'Passeio' && (
-          <>
-           
-
-            <TextInput
-              style={styles.input}
-              placeholder="Data"
-              value={data}
-              onChangeText={setData}
-              placeholderTextColor="#888"
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Horário"
-              value={horario}
-              onChangeText={setHorario}
-              placeholderTextColor="#888"
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Limite de Pessoas"
-              value={limitePessoas}
-              onChangeText={setLimitePessoas}
-              keyboardType="numeric"
-              placeholderTextColor="#888"
-            />
-          </>
-        )}
-
         <TouchableOpacity onPress={handlePost} style={styles.button}>
           <Text style={styles.buttonText}>Postar</Text>
         </TouchableOpacity>
@@ -151,7 +170,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 16,
+    padding: 0,
     backgroundColor: '#F5F5F5',
   },
   container: {
@@ -164,6 +183,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  inputContainer: {
+    height: 80,
+    width: '100%',
+    backgroundColor: '#2D9AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 0,
+    position: 'relative', // Permite que o elemento da seta seja posicionado de forma absoluta dentro do contêiner
+  },
+  setaContainer: {
+    position: 'absolute',
+    left: 20, // Distância da borda esquerda, ajuste conforme necessário
+  },
+  seta: {
+    width: 30, // Largura da seta, ajuste conforme necessário
+    height: 30, // Altura da seta, ajuste conforme necessário
   },
   title: {
     fontSize: 26,

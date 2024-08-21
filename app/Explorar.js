@@ -1,23 +1,15 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Modal, TextInput } from 'react-native';
-import { useRouter } from 'expo-router'; //adc : antes nao estava funcionando
-import BottomNavBar from './BottomNavBar'; // Certifique-se de ajustar o caminho conforme necessário
-import Icon from 'react-native-vector-icons/FontAwesome'; // Importando ícones do FontAwesome
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Modal } from 'react-native';
+import { useRouter } from 'expo-router';
+import BottomNavBar from './BottomNavBar';
+import { collection, getDocs } from "firebase/firestore";
+import { db } from './../firebaseConfig';
+import Icon from 'react-native-vector-icons/FontAwesome';
 
 const Explorar = () => {
-  //  const navigation = useNavigation();
-  const router = useRouter(); //adc essa parte aqui
-  const [modalVisible, setModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [configModalVisible, setConfigModalVisible] = useState(false); // Estado para o modal de configurações
-
-  const openSearchModal = () => {
-    setModalVisible(true);
-  };
-
-  const closeSearchModal = () => {
-    setModalVisible(false);
-  };
+  const router = useRouter();
+  const [publicacoes, setPublicacoes] = useState([]);
+  const [configModalVisible, setConfigModalVisible] = useState(false);
 
   const openConfigModal = () => {
     setConfigModalVisible(true);
@@ -25,6 +17,53 @@ const Explorar = () => {
 
   const closeConfigModal = () => {
     setConfigModalVisible(false);
+  };
+
+  useEffect(() => {
+    const fetchPublicacoes = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "publicacoes"));
+        const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setPublicacoes(data);
+      } catch (error) {
+        console.error('Erro ao buscar publicações:', error);
+      }
+    };
+
+    fetchPublicacoes();
+  }, []);
+
+  const renderPublicacoesPorTipo = (tipo) => {
+    return publicacoes
+      .filter(pub => pub.tipo === tipo)
+      .map((pub, index) => (
+        <TouchableOpacity 
+        key={index} 
+        style={styles.card} 
+        onPress={() => router.push({
+          pathname: '/CardDetalhes',
+          params: { 
+            imagemUrl: pub.imagemUrl,
+            titulo: pub.titulo,
+            valor: pub.valor,
+            descricao: pub.descricao,
+            endereco: pub.endereco,
+            tipo: pub.tipo,
+            id: pub.id
+          }
+        })}
+      >
+          {pub.imagemUrl ? (
+            <Image source={{ uri: pub.imagemUrl }} style={styles.cardImage} />
+          ) : (
+            <View style={styles.noImage}>
+              <Text style={styles.noImageText}>Sem Imagem</Text>
+            </View>
+          )}
+          <Text style={styles.cardTitle}>{pub.titulo}</Text>
+          <Text style={styles.cardDescription}>{pub.descricao}</Text>
+        </TouchableOpacity>
+      ));
   };
 
   return (
@@ -36,67 +75,53 @@ const Explorar = () => {
             <TouchableOpacity onPress={openConfigModal}>
               <Image source={require('../assets/configuracao.png')} style={styles.configuracao} />
             </TouchableOpacity>
+            <View style={styles.buttonWrapper}>
+              <View style={styles.buttonRow}>
+                <TouchableOpacity style={styles.button}>
+                  <Text style={styles.buttonTextB}>Restaurantes</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.button}>
+                  <Text style={styles.buttonTextB}>Roteiros</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity style={styles.buttonHotel}>
+                <Text style={styles.buttonTextB}>Hotéis</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <TouchableOpacity style={styles.button}>
-            <Text style={styles.buttonTextB}>Restaurantes</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.button2}>
-            <Text style={styles.buttonTextB}>Roteiros</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.button3}>
-            <Text style={styles.buttonTextB}>Hoteis</Text>
-          </TouchableOpacity>
-
-          <Text style={styles.textoTitulo}>Populares da semana</Text>
-          <Text style={styles.textoTitulo2}>Locais mais visitados no mundo</Text>
-
+          <Text style={styles.textoTitulo}>Restaurantes</Text>
           <View style={styles.cardContainer}>
-            <TouchableOpacity style={styles.card} onPress={() => router.push('/CardDetalhes')}>
-              <Image source={require('../assets/paris.png')} style={styles.cardImage} />
-              <Text style={styles.cardTitle}>Paris - França</Text>
-              <Text style={styles.cardDescription}>lore lore lore lore lore lore lore lore lore</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.card}>
-              <Image source={require('../assets/maceio.png')} style={styles.cardImage} />
-              <Text style={styles.cardTitle}>Maceió - Brasil</Text>
-              <Text style={styles.cardDescription}>lore lore lore lore lore lore lore lore lore</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.card}>
-              <Image source={require('../assets/paris.png')} style={styles.cardImage} />
-              <Text style={styles.cardTitle}>Paris - França</Text>
-              <Text style={styles.cardDescription}>lore lore lore lore lore lore lore lore lore</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.card}>
-              <Image source={require('../assets/espanha.png')} style={styles.cardImage} />
-              <Text style={styles.cardTitle}>Espanha</Text>
-              <Text style={styles.cardDescription}>lore lore lore lore lore lore lore lore lore</Text>
-            </TouchableOpacity>
+            {renderPublicacoesPorTipo('restaurante')}
+          </View>
 
-            <Text style={styles.textoTitulo3}>Restaurantes próximos de você</Text>
-            <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} style={styles.carouselContainer}>
-              <TouchableOpacity style={styles.cardCarousel}>
-                <Image source={require('../assets/LePetit.png')} style={styles.cardImageCarrossel} />
-                <Text style={styles.cardTitle}>Lê Petit</Text>
-                <Text style={styles.cardDescription}>A cidade da luz e do amor.</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.cardCarousel}>
-                <Image source={require('../assets/LePetit.png')} style={styles.cardImageCarrossel} />
-                <Text style={styles.cardTitle}>Lê Petit</Text>
-                <Text style={styles.cardDescription}>Coração tecnológico do Japão.</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.cardCarousel}>
-                <Image source={require('../assets/LePetit.png')} style={styles.cardImageCarrossel} />
-                <Text style={styles.cardTitle}>Lê Petit</Text>
-                <Text style={styles.cardDescription}>0,3 km.</Text>
-              </TouchableOpacity>
-            </ScrollView>
+          <Text style={styles.textoTitulo}>Hotéis</Text>
+          <View style={styles.cardContainer}>
+            {renderPublicacoesPorTipo('hotel')}
+          </View>
+
+          <Text style={styles.textoTitulo}>Bares</Text>
+          <View style={styles.cardContainer}>
+            {renderPublicacoesPorTipo('bar')}
+          </View>
+
+          <Text style={styles.textoTitulo}>Pontos Turísticos</Text>
+          <View style={styles.cardContainer}>
+            {renderPublicacoesPorTipo('Ponto Turístico')}
+          </View>
+
+          <Text style={styles.textoTitulo}>Cafeterias</Text>
+          <View style={styles.cardContainer}>
+            {renderPublicacoesPorTipo('cafeteria')}
+          </View>
+
+          <Text style={styles.textoTitulo}>Passeios</Text>
+          <View style={styles.cardContainer}>
+            {renderPublicacoesPorTipo('Passeio')}
           </View>
         </View>
       </ScrollView>
-      <BottomNavBar openSearchModal={openSearchModal} />
+      <BottomNavBar />
 
       <Modal
         animationType="slide"
@@ -145,13 +170,14 @@ const Explorar = () => {
 };
 
 const styles = StyleSheet.create({
+  // (mesmos estilos do código anterior)
   mainContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: 70, // Espacinho extra para a barra de navegação
+    paddingBottom: 70,
   },
   container: {
     alignItems: 'center',
@@ -159,19 +185,38 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   inputContainer: {
-    height: '23%',
-    paddingTop: 0,
     width: '100%',
     backgroundColor: '#2D9AFF',
-    borderRadius: 0,
     padding: 20,
-    top: 10,
+    paddingBottom: 40, // Ajuste para acomodar os botões
+    position: 'relative',
   },
   configuracao: {
-    left: 320,
     width: 30,
     height: 30,
-    top: 40,
+    position: 'absolute',
+    right: 20,
+    top: 10,
+  },
+  label: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 25,
+    marginBottom: 10,
+    position: 'absolute',
+    left: 20,
+    top: 20,
+  },
+  buttonWrapper: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 80, // Ajuste a margem superior para posicionar os botões abaixo do nome
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 20,
   },
   button: {
     width: '45%',
@@ -180,118 +225,74 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 20,
-    marginBottom: 20,
-    bottom: 150,
-    right: 100,
   },
-  button2: {
+  buttonHotel: {
     width: '45%',
     height: 50,
     backgroundColor: '#FFFFFF',
     borderRadius: 35,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 20,
-    marginBottom: 20,
-    bottom: 240,
-    left: 100,
-  },
-  button3: {
-    width: '45%',
-    height: 50,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 35,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    marginBottom: 20,
-    bottom: 260,
-    left: 10,
   },
   buttonTextB: {
-    color: '#3A3A3A',
-    fontSize: 15,
     fontWeight: 'bold',
+    color: '#3A3A3A',
+    fontSize: 17,
+
   },
   textoTitulo: {
-    marginBottom: 5,
+    width: '90%',
     color: '#242424',
-    textAlign: 'justify',
     fontWeight: 'bold',
     fontSize: 20,
-    bottom: 230,
-    right: 80,
-  },
-  textoTitulo2: {
-    marginBottom: 5,
-    color: '#242424',
-    textAlign: 'justify',
-    fontWeight: 'bold',
-    fontSize: 20,
-    bottom: 20,
-    right: 30,
-  },
-  textoTitulo3: {
-    marginBottom: 5,
-    color: '#242424',
-    textAlign: 'justify',
-    fontWeight: 'bold',
-    fontSize: 20,
-    bottom: 20,
-    left: 20,
-  },
-  label: {
-    marginBottom: 5,
-    color: '#FFFFFF',
-    textAlign: 'justify',
-    fontWeight: 'bold',
-    fontSize: 25,
-    top: 80,
+    marginTop: 20,
   },
   cardContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginTop: 20,
-    bottom: 280,
+    width: '90%',
+    marginTop: 10,
   },
   card: {
-    width: '50%',
+    width: '48%',
     backgroundColor: '#FFFFFF',
     borderRadius: 10,
-    padding: 20,
-    alignItems: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
     marginBottom: 20,
   },
   cardImage: {
-    width: 170,
+    width: '100%',
     height: 100,
-    borderRadius: 10,
+  },
+  noImage: {
+    width: '100%',
+    height: 100,
+    backgroundColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 10,
+  },
+  noImageText: {
+    color: '#888',
   },
   cardTitle: {
     fontWeight: 'bold',
     fontSize: 16,
-    marginBottom: 5,
+    padding: 10,
+    paddingBottom: 0,
+    color: '#333',
   },
   cardDescription: {
-    textAlign: 'center',
-  },
-  cardImageCarrossel: {
-    width: 160,
-    height: 100,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  cardCarousel: {
-    width: 170,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 20,
-    alignItems: 'center',
-    marginRight: 10,
-    marginLeft: 10,
+    fontSize: 14,
+    padding: 10,
+    paddingTop: 5,
+    color: '#666',
   },
   modalContainer: {
     flex: 1,
@@ -300,60 +301,34 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
+    backgroundColor: 'white',
     width: '80%',
+    borderRadius: 10,
     padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  searchInput: {
-    width: '100%',
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#007BFF',
-    borderRadius: 10,
-    marginBottom: 20,
-    backgroundColor: '#FFFFFF',
-    color: '#333',
-  },
-  searchButton: {
-    backgroundColor: '#007BFF',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  searchButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   closeButton: {
-    backgroundColor: '#007BFF',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    top:13,
+    backgroundColor: '#2D9AFF',
+    borderRadius: 5,
+    padding: 10,
+    marginTop: 20,
+    alignItems: 'center',
   },
   closeButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: 'white',
     fontWeight: 'bold',
   },
   configOption: {
-    width: '100%',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#DDD',
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  configOptionText: {
-    fontSize: 16,
-    marginLeft: 10,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
   configIcon: {
     marginRight: 10,
+  },
+  configOptionText: {
+    fontSize: 16,
   },
 });
 
